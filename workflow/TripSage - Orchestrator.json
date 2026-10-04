@@ -1,0 +1,575 @@
+{
+  "name": "TripSage - Orchestrator",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "tripsage-input",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        -64
+      ],
+      "id": "d1fe1036-5305-4cd3-aea7-112e35a7bc57",
+      "name": "Webhook",
+      "webhookId": "6871348f-06fc-4f1d-be34-edc2d8a747b0"
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-oss-120b",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        1200,
+        256
+      ],
+      "id": "946f7062-179c-4734-a681-a7e672a81755",
+      "name": "Groq Chat Model",
+      "credentials": {
+        "groqApi": {
+          "id": "YsoBfw4aExw2S26z",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-oss-120b",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        1216,
+        16
+      ],
+      "id": "e702dae1-ed01-4a6e-8fc3-96bc012ed7ff",
+      "name": "Groq Chat Model1",
+      "credentials": {
+        "groqApi": {
+          "id": "YsoBfw4aExw2S26z",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Available hotels: {{ $json.text }}\nStay budget: {{ $('Webhook').item.json.body.budget }}\nStart date: {{ $('Webhook').item.json.body.start_date }}\nEnd date: {{ $('Webhook').item.json.body.end_date }}",
+        "messages": {
+          "messageValues": [
+            {
+              "message": "You are a Stay Agent for a trip planning system. You are given a list of available hotels/stays and a budget allocated specifically for accommodation, along with trip duration. Select the best matching options considering: total nights needed, staying within the stay budget, and highest rating for the price. Respond ONLY with valid JSON in this exact format, no other text: {   \"recommended_stays\": [     {\"name\": \"string\", \"area\": \"string\", \"price_per_night\": number, \"rating\": number, \"total_cost\": number, \"why\": \"one short reason\"}   ],   \"reasoning\": \"one sentence on overall selection logic\" } Return up to 3 recommended options, ranked best first."
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        960,
+        -96
+      ],
+      "id": "edb73e07-6e15-469d-a3d0-8fd5e9c4cae0",
+      "name": "Stay - Agent LLM"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Total budget: {{ $json.body.budget }}\nDestination: {{ $json.body.destination }}\nOrigin: {{ $json.body.origin }}\nStart date: {{ $json.body.start_date }}\nEnd date: {{ $json.body.end_date }}\nTravelers: {{ $json.body.travelers }}",
+        "messages": {
+          "messageValues": [
+            {
+              "message": "You are a Budget Allocator Agent for a trip planning system. Given a total trip budget, duration, destination, and number of travelers, split the budget into these categories: travel (flights/trains), stay (hotels), food, activities, and buffer (10% contingency). Consider that some destinations are more expensive than others (e.g., Goa/Kerala = mid-tier, Ladakh/Andaman = high-tier, most other Indian destinations = budget-tier). Respond ONLY with valid JSON in this exact format, no other text: {   \"travel_budget\": number,   \"stay_budget\": number,   \"food_budget\": number,   \"activities_budget\": number,   \"buffer_budget\": number,   \"reasoning\": \"one sentence explaining the split\" }"
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        960,
+        144
+      ],
+      "id": "cd69fdad-a90d-49b5-9673-059e401a01c4",
+      "name": "Budget Allocator Agent LLM "
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Available travel options: {{ $json.text }}\nTravel budget: {{ $('Webhook').item.json.body.budget }}\nNumber of travelers: {{ $('Webhook').item.json.body.travelers }}\nOrigin: {{ $('Webhook').item.json.body.origin }}\nDestination: {{ $('Webhook').item.json.body.destination }}",
+        "messages": {
+          "messageValues": [
+            {
+              "message": "You are a Travel Options Agent for a trip planning system. Given available flight/train/bus options and a travel budget (per group, not per person), recommend the best options considering: total cost for all travelers, travel duration, and comfort/convenience. Multiply price by number of travelers where relevant for flights/trains/buses (car rental is a flat one-way cost regardless of travelers). Respond ONLY with valid JSON in this exact format, no other text: {   \"recommended_options\": [     {\"mode\": \"string\", \"provider\": \"string\", \"total_cost_for_group\": number, \"duration_hours\": number, \"why\": \"one short reason\"}   ],   \"reasoning\": \"one sentence on overall selection logic\" } Return up to 3 recommended options, ranked best first considering budget fit and convenience."
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        960,
+        -336
+      ],
+      "id": "ed94bd73-81d8-4f1e-9160-70e3770eb2f8",
+      "name": "Travel Options - LLM"
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-oss-120b",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        1088,
+        -208
+      ],
+      "id": "bed1e076-fddc-4f46-8a96-452276fecc00",
+      "name": "Groq Chat Model2",
+      "credentials": {
+        "groqApi": {
+          "id": "YsoBfw4aExw2S26z",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-oss-120b",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        528,
+        192
+      ],
+      "id": "83af5857-b6bb-4900-9eee-5c7c95154af8",
+      "name": "Groq Chat Model3",
+      "credentials": {
+        "groqApi": {
+          "id": "YsoBfw4aExw2S26z",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Destination: {{ $('Webhook').item.json.body.destination }}",
+        "messages": {
+          "messageValues": [
+            {
+              "message": "You are a data generation agent. Given a destination, generate 6 realistic accommodation options that could plausibly exist there, covering budget/mid-range/luxury tiers. Use realistic INR pricing for that destination's typical cost of living. Respond ONLY with valid JSON in this format, no other text: {   \"hotels\": [     {\"name\": \"string\", \"area\": \"string\", \"price_per_night\": number, \"rating\": number, \"type\": \"string\"}   ] }"
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        608,
+        -64
+      ],
+      "id": "fc5698aa-1cf9-4ffb-9b92-4ee3c25f9c44",
+      "name": "Stay Data Generator"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Origin: {{ $('Webhook').item.json.body.origin }}\nDestination: {{ $('Webhook').item.json.body.destination }}",
+        "messages": {
+          "messageValues": [
+            {
+              "message": "You are a data generation agent. Given an origin and destination in India, generate 6-8 realistic travel options covering flight, train, and bus modes for that specific route. Use realistic INR pricing based on the actual distance between these cities, and realistic durations. Include a mix of budget and premium options within each mode where relevant (e.g., sleeper vs 3AC for trains). If the origin and destination are very close (under 150km), flights may not be realistic — skip them and focus on train/bus/car options. Respond ONLY with valid JSON in this exact format, no other text: {   \"travel_options\": [     {\"mode\": \"string\", \"provider\": \"string\", \"price\": number, \"duration_hours\": number, \"type\": \"string\"}   ] }"
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        624,
+        -320
+      ],
+      "id": "94717018-c830-4482-b45d-dbb17c9429f9",
+      "name": "Travel Data Generator"
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-oss-120b",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        816,
+        -176
+      ],
+      "id": "d8526759-7802-48ea-a63d-6d7a49fcda0f",
+      "name": "Groq Chat Model4",
+      "credentials": {
+        "groqApi": {
+          "id": "YsoBfw4aExw2S26z",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Destination: {{ $('Webhook').item.json.body.destination }}\nStart date: {{ $('Webhook').item.json.body.start_date }}\nEnd date: {{ $('Webhook').item.json.body.end_date }}\nInterests: {{ $('Webhook').item.json.body.interests }}\nNumber of travelers: {{ $('Webhook').item.json.body.travelers }}",
+        "messages": {
+          "messageValues": [
+            {
+              "message": "You are an Itinerary Agent for a trip planning system. Given a destination, trip dates, and traveler interests, create a realistic day-by-day itinerary. Calculate the number of days from the start and end dates. For each day, suggest 2-4 real, well-known places/activities in that destination that match the stated interests, sequenced in a sensible geographic/logical order (don't zigzag across the city). For each stop, estimate local transport time and cost (in INR, for a rickshaw/cab) from the previous stop. Respond ONLY with valid JSON in this exact format, no other text: {   \"itinerary\": [     {       \"day\": 1,       \"stops\": [         {\"name\": \"string\", \"type\": \"string\", \"time_slot\": \"Morning/Afternoon/Evening\", \"transport_from_previous\": \"string describing mode, time, cost, or 'N/A' for first stop\"}       ]     }   ],   \"reasoning\": \"one sentence on how the itinerary was structured\" }     Do not wrap your response in markdown code blocks or backticks. Output raw JSON only, starting directly with { and ending with }."
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        960,
+        -528
+      ],
+      "id": "5e7c6d29-b794-415c-8f80-2003740ca72c",
+      "name": "Itinerary Agent"
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-oss-120b",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        688,
+        -544
+      ],
+      "id": "c7bc05bd-c559-45cc-a710-d7f26edd31cc",
+      "name": "Groq Chat Model5",
+      "credentials": {
+        "groqApi": {
+          "id": "YsoBfw4aExw2S26z",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "numberInputs": 4
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1632,
+        -224
+      ],
+      "id": "119f3348-fae0-48e0-8cb0-7dce1fe16a9e",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Budget Allocation: {{ $json.budget_allocation }}\nStay Recommendations: {{ $json.stay_recommendations }}\nTravel Options: {{ $json.travel_options }}\nItinerary: {{ $json.itinerary }}\nTrip details: Origin {{ $('Webhook').item.json.body.origin }}, Destination {{ $('Webhook').item.json.body.destination }}, Total Budget {{ $('Webhook').item.json.body.budget }}, Travelers {{ $('Webhook').item.json.body.travelers }}",
+        "messages": {
+          "messageValues": [
+            {
+              "message": "You are a Booking Summary Agent for a trip planning system. You will receive Budget Allocation, Stay Recommendations, Travel Options, and Itinerary data from four specialist agents. Combine and enrich this into one structured output for a comparison UI where the user can browse multiple options, not just one pick.\n\nFor travel options, generate plausible realistic departure and arrival times for each option. For both stay and travel options, assign the most realistic Indian booking platform (hotels: MakeMyTrip, Booking.com, Goibibo, Agoda; travel: Google Flights, IRCTC, RedBus, Ixigo, Abhibus).\n\nAlso produce a full budget breakdown: the amount and percentage for each category (Travel, Stay, Food, Activities, Buffer), whether the estimated total cost fits the given total budget, the difference, and 2 alternative allocation scenarios if the plan is over budget (e.g., a \"Budget Saver\" option and a \"Comfort Upgrade\" option) with one-line descriptions and their estimated totals.\n\nFor the itinerary, do NOT summarize it into a paragraph. Instead, restructure the full itinerary data you received into a day-by-day array, preserving every stop with its date, time slot, place name, and a short 1-sentence description of what to do there and why it fits the traveler's interests. Use the actual start_date to calculate the real calendar date for each day.\n\nDo not wrap your response in markdown or backticks. Respond ONLY with raw JSON in this exact structure:\n{\n  \"trip_summary\": \"2-3 sentence overview\",\n  \"budget_breakdown\": {\n    \"total_budget\": number,\n    \"categories\": [\n      {\"category\": \"Travel\", \"amount\": number, \"percent\": number},\n      {\"category\": \"Stay\", \"amount\": number, \"percent\": number},\n      {\"category\": \"Food\", \"amount\": number, \"percent\": number},\n      {\"category\": \"Activities\", \"amount\": number, \"percent\": number},\n      {\"category\": \"Buffer\", \"amount\": number, \"percent\": number}\n    ],\n    \"reasoning\": \"one sentence on how the split was decided\",\n    \"estimated_total_cost\": number,\n    \"fits_budget\": boolean,\n    \"difference\": number,\n    \"alternatives\": [\n      {\"label\": \"Budget Saver\", \"description\": \"one sentence on what changes\", \"estimated_total_cost\": number},\n      {\"label\": \"Comfort Upgrade\", \"description\": \"one sentence on what changes\", \"estimated_total_cost\": number}\n    ]\n  },\n  \"stay_options\": [\n    {\"name\": \"string\", \"area\": \"string\", \"price_per_night\": number, \"nights\": number, \"total_cost\": number, \"rating\": number, \"platform\": \"string\"}\n  ],\n  \"travel_options\": [\n    {\"mode\": \"string\", \"provider\": \"string\", \"departure_time\": \"string\", \"arrival_time\": \"string\", \"duration_hours\": number, \"total_cost_for_group\": number, \"platform\": \"string\"}\n  ],\n  \"itinerary\": [\n    {\n      \"day\": 1,\n      \"date\": \"e.g. Oct 10, 2026\",\n      \"stops\": [\n        {\"time_slot\": \"Morning\", \"place\": \"string\", \"description\": \"one sentence on what to do here and why it fits their interests\", \"transport_note\": \"string, e.g. Cab 15 min, INR 150 from previous stop\"}\n      ]\n    }\n  ],\n  \"booking_note\": \"string\"\n}\nInclude up to 3 stay_options and up to 3 travel_options, ranked best first."
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        2176,
+        -192
+      ],
+      "id": "ef82f61c-e295-4c6e-9879-1552a710a8b0",
+      "name": "Booking Summary Agent"
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-oss-safeguard-20b",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        2352,
+        0
+      ],
+      "id": "a3314ca0-9810-4c03-8cc6-06242a466cf2",
+      "name": "Groq Chat Model6",
+      "credentials": {
+        "groqApi": {
+          "id": "YsoBfw4aExw2S26z",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Loop over input items and add a new field called 'myNewField' to the JSON of each one\nconst items = $input.all();\nreturn [{\n  json: {\n    budget_allocation: items[0].json.text,\n    stay_recommendations: items[1].json.text,\n    travel_options: items[2].json.text,\n    itinerary: items[3].json.text\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1920,
+        -192
+      ],
+      "id": "3c9b3d62-9767-43f9-9331-d92d47535fad",
+      "name": "Combine Agent Outputs"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json.text }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        2576,
+        -192
+      ],
+      "id": "27e25745-2dbc-448d-a0dd-6fec375578e9",
+      "name": "Respond to Webhook"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Groq Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Budget Allocator Agent LLM ",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Budget Allocator Agent LLM ",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Stay Data Generator",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Travel Data Generator",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Itinerary Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Stay - Agent LLM",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Stay - Agent LLM": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Travel Options - LLM": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model2": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Travel Options - LLM",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model3": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Stay Data Generator",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Stay Data Generator": {
+      "main": [
+        [
+          {
+            "node": "Stay - Agent LLM",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Travel Data Generator": {
+      "main": [
+        [
+          {
+            "node": "Travel Options - LLM",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model4": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Travel Data Generator",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model5": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Itinerary Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Budget Allocator Agent LLM ": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Itinerary Agent": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 3
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Combine Agent Outputs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model6": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Booking Summary Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Combine Agent Outputs": {
+      "main": [
+        [
+          {
+            "node": "Booking Summary Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Booking Summary Agent": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "de16bc7d-2f27-4970-bdb0-74583eb84c8f",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "792f4216f465208725ff61d91a752e0695037a107eef00c97f00f8f868bac1b1"
+  },
+  "nodeGroups": [],
+  "id": "R7ryHzID2JjVajZc",
+  "tags": []
+}
