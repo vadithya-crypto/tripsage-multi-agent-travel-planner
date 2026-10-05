@@ -40,11 +40,16 @@ User form (HTML frontend)
                                                              Booking Summary Agent
                                                                          │
                                                                          ▼
+                                                            Clean JSON (Code node)
+                                                                         │
+                                                                         ▼
                                                               Respond to Webhook
                                                                          │
                                                                          ▼
                                                       Frontend renders comparison UI
 ```
+
+The **Clean JSON** node repairs minor formatting slips in the model's long reply (missing commas, stray quotes, trailing commas, cut-off output) before the webhook responds.
 
 ---
 
@@ -69,7 +74,7 @@ User form (HTML frontend)
 | Workflow orchestration | **n8n** (self-hosted, community edition) |
 | LLM inference | **Groq API** (`openai/gpt-oss-120b`) via n8n's Groq Chat Model + Basic LLM Chain nodes |
 | Parallel execution & sync | n8n branching + **Merge** node |
-| Data shaping | n8n **Code** node (JavaScript) |
+| Data shaping & JSON repair | n8n **Code** nodes (JavaScript) |
 | API surface | n8n **Webhook** + **Respond to Webhook** |
 | Frontend | HTML, CSS, vanilla JavaScript (single file) |
 | Editor | VS Code |
@@ -79,20 +84,23 @@ User form (HTML frontend)
 ## 🗂️ Repository Structure
 
 ```
-tripsage/
+tripsage-multi-agent-travel-planner/
 │
 ├── workflow/
-│   └── tripsage-orchestrator.json     # exported n8n workflow (import this)
+│   └── TripSage - Orchestrator.json   # exported n8n workflow (import this)
 │
 ├── frontend/
 │   └── index.html                     # demo UI (form + comparison results)
 │
 ├── screenshots/
 │   ├── n8n-workflow.png
-│   ├── ui-budget-and-options.png
-│   └── ui-itinerary.png
+│   ├── n8n-booking-summary.png
+│   ├── ui-inputs-summary.png
+│   ├── ui-budget-stay.png
+│   ├── ui-travel-options.png
+│   ├── ui-itinerary.png
+│   └── ui-raw-output.png
 │
-├── .gitignore
 └── README.md
 ```
 
@@ -106,13 +114,14 @@ tripsage/
    n8n start
    ```
    Then open `http://localhost:5678`.
-2. **Import the workflow**: Workflows → Import from file → `workflow/tripsage-orchestrator.json`.
-3. **Add your Groq credential**: get a free API key at [console.groq.com](https://console.groq.com), create a Groq credential in n8n, and attach it to each Groq Chat Model node (model: `openai/gpt-oss-120b`).
-4. **Publish** the workflow so the production webhook is live.
-5. **Open `frontend/index.html`** in a browser. The webhook URL is set at the top of the script (`http://localhost:5678/webhook/tripsage-input`).
-6. Fill in the form and click **Plan My Trip**. A full run takes roughly 15–40 seconds.
+2. **Import the workflow**: Workflows → Import from file → `workflow/TripSage - Orchestrator.json`.
+3. **Add your Groq credential**: get a free API key at [console.groq.com](https://console.groq.com) and create a Groq credential in n8n. Credentials are not included in the exported workflow, so select your credential on each of the six Groq Chat Model nodes (model: `openai/gpt-oss-120b`).
+4. **Check the response node**: on **Respond to Webhook**, *Respond With* should be set to *First Incoming Item*.
+5. **Publish** the workflow so the production webhook is live.
+6. **Open `frontend/index.html`** in a browser. The webhook URL is set at the top of the script (`http://localhost:5678/webhook/tripsage-input`).
+7. Fill in the form and click **Plan My Trip**. A full run takes roughly 15–40 seconds.
 
-> ⚠️ Groq's free tier has per-model request limits. If you hit a rate-limit error, wait a bit or switch the Groq Chat Model nodes to another model.
+> ⚠️ **Rate limits:** one run makes 7 LLM calls. On Groq's free tier, `gpt-oss-120b` allows about 8,000 tokens per minute, so two runs within a minute can hit a rate-limit error. Wait about a minute between runs. Enabling *Retry On Fail* on the LLM nodes also helps.
 
 ---
 
@@ -125,7 +134,16 @@ The frontend renders:
 - **Three stay options** and **three travel options** side by side, with price, rating/timings, duration and a "Book on …" button each
 - A **day-by-day itinerary** with real calendar dates, time slots, place descriptions and transport notes
 
-_(Add screenshots to the `screenshots/` folder and link them here.)_
+### Workflow (n8n)
+![n8n workflow](screenshots/n8n-workflow.png)
+![Booking Summary Agent](screenshots/n8n-booking-summary.png)
+
+### Frontend
+![Inputs and trip summary](screenshots/ui-inputs-summary.png)
+![Budget breakdown and stay options](screenshots/ui-budget-stay.png)
+![Travel options](screenshots/ui-travel-options.png)
+![Day-by-day itinerary](screenshots/ui-itinerary.png)
+![Raw agent output](screenshots/ui-raw-output.png)
 
 ---
 
@@ -133,6 +151,7 @@ _(Add screenshots to the `screenshots/` folder and link them here.)_
 
 - **Option data is LLM-generated, not live inventory.** Hotel and travel options are realistic estimates generated per destination by a data-generator agent. This lets the system work for *any* origin/destination without a hardcoded dataset. It is not real-time pricing or availability.
 - **Booking buttons open real searches, not pre-filled checkouts.** The frontend builds URLs from the agents' picks (Google Flights for flights, Google search for hotels/trains/buses). There is no booking API and no payment handling.
+- **Totals are LLM arithmetic.** The estimated total and the budget-fit flag come from the model, not from code, so they can differ slightly from the sum of the cards shown.
 - **No MCP.** Agents call the LLM through n8n's native nodes. MCP would be a natural way to plug in live hotel/flight tools later.
 - **No agent-to-agent feedback loop yet.** The Booking Summary Agent can detect an over-budget plan and propose alternatives, but it cannot send work back to earlier agents.
 - **One model across all agents** keeps output format and behaviour consistent and easier to debug.
@@ -143,6 +162,7 @@ _(Add screenshots to the `screenshots/` folder and link them here.)_
 
 - **Feasibility pre-check agent**: reject impossible requests early (e.g. Pune → Dubai on ₹1,000) before running the full pipeline
 - Replace the data-generator agents with live APIs (Google Places, flight/hotel aggregators), ideally via MCP tools
+- Compute totals in code instead of asking the model to add them up
 - Feedback loop: when the plan is over budget, automatically re-run the stay/travel agents with tighter constraints
 - Deep links to specific listings and, where supported, checkout pages
 
@@ -150,5 +170,5 @@ _(Add screenshots to the `screenshots/` folder and link them here.)_
 
 ## 👤 Author
 
-**V Adithya** — [25030242063] — SCIT, Pune
+**V Adithya** — PRN 25030242063 — SCIT, Pune
 Agentic AI course project, 2026
